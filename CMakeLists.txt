@@ -7,8 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Find raylib
 find_package(raylib CONFIG REQUIRED)
 
-# Add executable
-add_executable(${PROJECT_NAME}
+# Source files (shared across all platforms)
+set(SOURCES
     main.cpp
     theme.cpp
     dashboard.cpp
@@ -16,10 +16,32 @@ add_executable(${PROJECT_NAME}
     terminal.cpp
     config.cpp
     system_monitor.cpp
+    system_monitor_posix.cpp
+    speedtest.cpp
 )
 
-# Link raylib
-target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
+add_executable(${PROJECT_NAME} ${SOURCES})
+
+# Platform-specific link libraries
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
+elseif(APPLE)
+    find_library(COCOA_LIB Cocoa REQUIRED)
+    find_library(IOKIT_LIB IOKit REQUIRED)
+    find_library(COREVIDEO_LIB CoreVideo REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        raylib
+        ${COCOA_LIB} ${IOKIT_LIB} ${COREVIDEO_LIB}
+    )
+elseif(UNIX)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        raylib
+        pthread dl m
+    )
+    # GL is needed by raylib on Linux
+    find_package(OpenGL REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL)
+endif()
 
 # Copy resources to build directory
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

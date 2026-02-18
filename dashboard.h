@@ -109,4 +109,6 @@ void DrawProgressBar(int x, int y, int w, int h, float pct, Color col);
 void DrawPanel(int x, int y, int w, int h, const char* title);
 void DrawDashboard();
 void DrawMenu();
+void DrawNetworkDiagnostics();
+void DrawSystemInfo();
 void HandleMenuSelection();
