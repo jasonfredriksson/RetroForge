@@ -16,6 +16,7 @@ add_executable(${PROJECT_NAME}
     terminal.cpp
     config.cpp
     system_monitor.cpp
+    speedtest.cpp
 )
 
 # Link raylib

@@ -9,16 +9,16 @@ uniform vec2 resolution;
 uniform float time;
 uniform vec3 phosphorTint;  // Theme color passed from CPU
 
-// CRT parameters (dialed down for readability)
-const float SCANLINE_STRENGTH = 0.06;
-const float SCANLINE_FREQ = 1.5;
-const float BRIGHTNESS = 1.05;
-const float CONTRAST = 1.05;
-const float CURVATURE = 0.06;
-const float VIGNETTE_STRENGTH = 0.2;
-const float GLOW_STRENGTH = 0.12;
+// CRT parameters - subtle atmosphere, maximum readability
+const float SCANLINE_STRENGTH = 0.02;
+const float SCANLINE_FREQ = 1.0;
+const float BRIGHTNESS = 1.02;
+const float CONTRAST = 1.01;
+const float CURVATURE = 0.015;
+const float VIGNETTE_STRENGTH = 0.08;
+const float GLOW_STRENGTH = 0.04;
 const float FLICKER_SPEED = 8.0;
-const float FLICKER_STRENGTH = 0.008;
+const float FLICKER_STRENGTH = 0.003;
 
 // Apply barrel distortion for CRT curvature
 vec2 applyCurvature(vec2 uv) {
@@ -79,8 +79,8 @@ void main() {
     // Apply subtle phosphor atmospheric tint
     // Preserve original colors (drawn in theme color already), just add a slight cast
     // Mix between original color and tinted version at low strength
-    vec3 tinted = color * phosphorTint * 1.3;
-    color = mix(color, tinted, 0.25);
+    vec3 tinted = color * phosphorTint * 1.1;
+    color = mix(color, tinted, 0.12);
     
     // Add scanlines
     color *= (1.0 - scanlines(uv));

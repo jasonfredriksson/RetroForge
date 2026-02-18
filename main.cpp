@@ -5,6 +5,7 @@
 #include "terminal.h"
 #include "config.h"
 #include "system_monitor.h"
+#include "speedtest.h"
 #include <string>
 #include <cstdio>
 
@@ -32,13 +33,13 @@ void HandleMenuSelection() {
         case MENU_NETWORK_TEST:
             currentMenu = MENU_NETWORK_TEST;
             showMenu = false;
-            AddLogEntry("[NET] Network diagnostics - coming soon", YELLOW_ALERT);
+            AddLogEntry("[NET] Network diagnostics active", CYAN_HIGHLIGHT);
             break;
 
         case MENU_SYSTEM_INFO:
             currentMenu = MENU_SYSTEM_INFO;
             showMenu = false;
-            AddLogEntry("[MENU] System Information - coming soon", YELLOW_ALERT);
+            AddLogEntry("[MENU] System Information", CYAN_HIGHLIGHT);
             break;
 
         case MENU_CUSTOMIZE_WIDGETS:
@@ -58,8 +59,6 @@ void HandleMenuSelection() {
         case MENU_TERMINAL:
             showTerminal = true;
             showMenu = false;
-            if (terminalOutput.empty())
-                terminalOutput.push_back("CRT Dashboard Terminal  -  type commands and press ENTER");
             AddLogEntry("[TERMINAL] Terminal opened", CYAN_HIGHLIGHT);
             break;
     }
@@ -69,7 +68,6 @@ void HandleMenuSelection() {
 int main() {
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);
     SetExitKey(KEY_NULL);
-    SetTargetFPS(60);
 
     // Font
     retroFont = LoadFont("resources/fonts/VGA.ttf");
@@ -105,10 +103,7 @@ int main() {
     float res[2] = { (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT };
     SetShaderValue(crtShader, resLoc, res, SHADER_UNIFORM_VEC2);
 
-    AddLogEntry("[SYSTEM] Initializing mainframe...", GREEN_PHOSPHOR);
-    AddLogEntry("[BOOT]   Loading kernel modules...", GREEN_PHOSPHOR);
-    AddLogEntry("[NET]    Network interface up",      GREEN_PHOSPHOR);
-    AddLogEntry("[INPUT]  Press TAB to open menu",    CYAN_HIGHLIGHT);
+    AddLogEntry("[SYSTEM] Dashboard ready. Press TAB to open menu.", CYAN_HIGHLIGHT);
 
     // ── Main loop ─────────────────────────────────────────────────────────────
     while (!WindowShouldClose()) {
@@ -116,35 +111,66 @@ int main() {
         timeAccumulator += dt;
         menuBlinkTimer  += dt;
 
+        // ── F11: borderless fullscreen toggle (no black flash, no title bar) ─
+        if (IsKeyPressed(KEY_F11)) {
+            if (!IsWindowState(FLAG_BORDERLESS_WINDOWED_MODE)) {
+                SetWindowState(FLAG_WINDOW_UNDECORATED);
+                ToggleBorderlessWindowed();
+                AddLogEntry("[DISPLAY] Fullscreen ON", DIM_GREEN);
+            } else {
+                ToggleBorderlessWindowed();
+                ClearWindowState(FLAG_WINDOW_UNDECORATED);
+                AddLogEntry("[DISPLAY] Fullscreen OFF", DIM_GREEN);
+            }
+        }
+
+        // ── Ctrl+Escape: quit ─────────────────────────────────────────────
+        if (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) {
+            if (IsKeyPressed(KEY_ESCAPE)) break;
+        }
+
         // ── Input: Terminal (highest priority when open) ───────────────────
         if (showTerminal) {
-            int ch = GetCharPressed();
-            while (ch > 0) {
-                if (ch >= 32 && ch < 127) terminalInput += (char)ch;
-                ch = GetCharPressed();
-            }
-            if (IsKeyPressed(KEY_BACKSPACE) && !terminalInput.empty())
-                terminalInput.pop_back();
-            if (IsKeyPressed(KEY_ENTER) && !terminalInput.empty()) {
-                if (terminalInput.size() >= 3 && terminalInput.substr(0, 3) == "cd ") {
-                    std::string dir = terminalInput.substr(3);
-                    std::string probe = "cd /d \"" + terminalCwd + "\" && cd \"" + dir + "\" && cd";
-                    FILE* p = _popen(probe.c_str(), "r");
-                    if (p) {
-                        char buf[512] = {};
-                        fgets(buf, sizeof(buf), p);
-                        _pclose(p);
-                        std::string nd(buf);
-                        while (!nd.empty() && (nd.back()=='\n'||nd.back()=='\r')) nd.pop_back();
-                        if (!nd.empty()) terminalCwd = nd;
-                    }
-                    terminalOutput.push_back("> " + terminalCwd + " $ " + terminalInput);
-                } else {
-                    RunTerminalCommand(terminalInput);
+            bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+
+            // Tab management shortcuts
+            if (ctrl && IsKeyPressed(KEY_T)) {
+                AddTerminalTab();
+            } else if (ctrl && IsKeyPressed(KEY_W)) {
+                CloseTerminalTab(activeTab);
+            } else if (ctrl && IsKeyPressed(KEY_TAB)) {
+                activeTab = (activeTab + 1) % tabCount;
+            } else {
+                // Normal input goes to active tab
+                TerminalTab& t = tabs[activeTab];
+                int ch = GetCharPressed();
+                while (ch > 0) {
+                    if (ch >= 32 && ch < 127) t.input += (char)ch;
+                    ch = GetCharPressed();
                 }
-                terminalInput.clear();
+                if (IsKeyPressed(KEY_BACKSPACE) && !t.input.empty())
+                    t.input.pop_back();
+                if (IsKeyPressed(KEY_ENTER) && !t.input.empty()) {
+                    if (t.input.size() >= 3 && t.input.substr(0, 3) == "cd ") {
+                        std::string dir   = t.input.substr(3);
+                        std::string probe = "cd /d \"" + t.cwd + "\" && cd \"" + dir + "\" && cd";
+                        FILE* p = _popen(probe.c_str(), "r");
+                        if (p) {
+                            char buf[512] = {};
+                            fgets(buf, sizeof(buf), p);
+                            _pclose(p);
+                            std::string nd(buf);
+                            while (!nd.empty() && (nd.back()=='\n'||nd.back()=='\r')) nd.pop_back();
+                            if (!nd.empty()) t.cwd = nd;
+                        }
+                        t.output.push_back("> " + t.cwd + " $ " + t.input);
+                    } else {
+                        RunTerminalCommand(t.input);
+                    }
+                    t.input.clear();
+                }
+                if (IsKeyPressed(KEY_ESCAPE)) showTerminal = false;
             }
-            if (IsKeyPressed(KEY_ESCAPE)) showTerminal = false;
         }
 
         // ── Input: Onboarding ─────────────────────────────────────────────
@@ -208,23 +234,47 @@ int main() {
             }
         }
 
-        // ── Input: Main menu ──────────────────────────────────────────────
+        // ── Input: Main menu + view-specific keys ────────────────────────
         else {
+            // TAB always toggles the menu overlay
             if (IsKeyPressed(KEY_TAB)) {
                 showMenu = !showMenu;
                 AddLogEntry(showMenu ? "[INPUT] Menu opened" : "[INPUT] Menu closed", DIM_GREEN);
             }
+
+            // Menu overlay navigation (works from any view)
             if (showMenu) {
                 if (IsKeyPressed(KEY_UP))     { selectedOption = (selectedOption - 1 + MENU_COUNT) % MENU_COUNT; menuBlinkTimer = 0; }
                 if (IsKeyPressed(KEY_DOWN))   { selectedOption = (selectedOption + 1) % MENU_COUNT; menuBlinkTimer = 0; }
                 if (IsKeyPressed(KEY_ENTER))  HandleMenuSelection();
                 if (IsKeyPressed(KEY_ESCAPE)) showMenu = false;
             }
+            // View-specific keys when menu is closed
+            else if (currentMenu == MENU_SYSTEM_INFO) {
+                if (IsKeyPressed(KEY_ESCAPE)) {
+                    currentMenu = MENU_DASHBOARD;
+                    AddLogEntry("[MENU] Returned to dashboard", DIM_GREEN);
+                }
+            }
+            else if (currentMenu == MENU_NETWORK_TEST) {
+                if (IsKeyPressed(KEY_ENTER)) {
+                    if (speedTestState != SpeedTestState::RUNNING)
+                        StartSpeedTest();
+                }
+                if (IsKeyPressed(KEY_S)) {
+                    SaveSpeedTestResult();
+                    if (speedTestHasSaved)
+                        AddLogEntry("[SPEEDTEST] Result saved to speedtest_results.txt", CYAN_HIGHLIGHT);
+                }
+                if (IsKeyPressed(KEY_ESCAPE)) {
+                    currentMenu = MENU_DASHBOARD;
+                    AddLogEntry("[NET] Returned to dashboard", DIM_GREEN);
+                }
+            }
         }
 
         // ── Update ────────────────────────────────────────────────────────
         UpdateStats(dt);
-        if (GetRandomValue(0, 60) == 0) GenerateRandomLog();
 
         // ── Shader uniforms ───────────────────────────────────────────────
         SetShaderValue(crtShader, timeLoc, &timeAccumulator, SHADER_UNIFORM_FLOAT);
@@ -243,8 +293,16 @@ int main() {
         BeginDrawing();
             ClearBackground(COLOR_BLACK);
             BeginShaderMode(crtShader);
+            {
+                int sw = GetScreenWidth(), sh = GetScreenHeight();
                 Rectangle src = { 0, 0, (float)target.texture.width, (float)-target.texture.height };
-                DrawTextureRec(target.texture, src, {0, 0}, WHITE);
+                float scale = (sw / (float)WINDOW_WIDTH < sh / (float)WINDOW_HEIGHT)
+                              ? sw / (float)WINDOW_WIDTH : sh / (float)WINDOW_HEIGHT;
+                Rectangle dst = { (sw - WINDOW_WIDTH * scale) * 0.5f,
+                                  (sh - WINDOW_HEIGHT * scale) * 0.5f,
+                                  WINDOW_WIDTH * scale, WINDOW_HEIGHT * scale };
+                DrawTexturePro(target.texture, src, dst, {0, 0}, 0.f, WHITE);
+            }
             EndShaderMode();
 
             // Overlays drawn AFTER shader - no CRT tint applied to them
@@ -253,7 +311,6 @@ int main() {
             DrawOnboarding();
             DrawTerminal();
 
-            DrawFPS(10, 10);
         EndDrawing();
     }
 
