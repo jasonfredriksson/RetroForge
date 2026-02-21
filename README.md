@@ -1,150 +1,144 @@
 # RetroForge
 
-A nostalgic 1980s/90s green-phosphor CRT monitor style system information dashboard built with raylib and C++.
+A retro CRT-style system monitoring dashboard built with C++ and raylib. Authentic green-phosphor aesthetics, real-time system metrics, an embedded terminal, network diagnostics, anomaly detection, and a CPU stress tester — all wrapped in a self-contained single executable.
+
+![RetroForge Screenshot](screenshot.png)
+
+---
 
 ## Features
 
-- **Authentic CRT aesthetic**: Scanlines, barrel distortion, phosphor glow, subtle flicker, and vignette
-- **Retro terminal UI**: Green-phosphor text with amber accents
-- **Interactive keyboard controls**: Arrow key navigation with TAB menu toggle
-- **Real-time system monitoring**: Actual CPU, RAM, and Disk usage from Windows APIs
-- **Multiple view modes**: Switch between simulated and live monitoring
-- **Animated system stats**: Smooth transitions and progress bars
-- **Network monitoring**: Real-time network speed display
-- **System log**: Scrolling log entries with fade-out effect
-- **Flashing alerts**: Yellow anomaly indicator
-- **1280×720 resolution**: Windowed and resizable
+### Visuals
+- **Authentic CRT shader** — scanlines, barrel distortion, phosphor glow, vignette, and subtle flicker
+- **Multiple color themes** — Green Phosphor, Amber, White, Cyan, Red, and more
+- **VGA retro font** support with automatic fallback
 
-## Build Requirements
+### System Monitoring
+- **Live CPU, RAM, and Disk usage** — real Windows/Linux/macOS API data
+- **Multi-drive disk monitoring** — all mounted drives with usage bars
+- **Real-time network speed** — download and upload in KB/s or MB/s, auto-scaled
+- **Process count and system uptime**
+- **Computer name display**
+- **Simulated mode** — smooth animated fake data for demo/screensaver use
 
+### Anomaly Detector
+Watches live metrics and triggers a red flashing alert when:
+- **CPU** stays above 90% for 3+ consecutive seconds
+- **RAM** exceeds 95%
+- **Network** spikes 10× its 30-second rolling baseline
+
+All anomaly events are logged with timestamps in the system log.
+
+### CPU Stress Test
+Press **F5** (in live monitoring mode) to peg all CPU cores for 30 seconds. Watch the anomaly detector trigger in real time. Press **F5** again to stop early. Progress shown in the bottom bar.
+
+### Network Diagnostics
+Built-in internet speed test against `speed.cloudflare.com`. Results saved to `speedtest_results.txt`.
+
+### System Information
+Full hardware and OS info panel — CPU name, core count, RAM, OS version, hostname.
+
+### Embedded Terminal
+Multi-tab terminal (up to 4 tabs) running native shell commands. Supports `cd` for directory navigation.
+> **Note:** Use simple one-shot commands (`dir`, `ping`, `ipconfig`, `ls`). Interactive programs (`python`, `ssh`, etc.) are not supported.
+
+### Customizable Widgets
+Toggle any widget on/off from the Customize menu. Settings persist across sessions via `dashboard.cfg`.
+
+---
+
+## Download
+
+**Windows users:** grab the latest release from the [Releases](../../releases) page. It's a single `.zip` — no installer, no runtime required. Just unzip and run `RetroForge.exe`.
+
+---
+
+## Building from Source
+
+### Requirements
 - CMake 3.16+
-- C++17 compatible compiler
-- raylib library (installed via package manager or vcpkg)
+- C++17 compiler (MSVC 2019+, GCC 10+, Clang 12+)
+- [vcpkg](https://github.com/microsoft/vcpkg)
 
-## Building
+### Windows (self-contained static build)
 
-### Using vcpkg (recommended)
-
-```bash
-# Install raylib via vcpkg
-vcpkg install raylib
-
-# Build the project
-mkdir build
-cd build
-cmake .. -DCMAKE_TOOLCHAIN_FILE=[vcpkg-root]/scripts/buildsystems/vcpkg.cmake
-cmake --build .
-```
-
-### Using system package manager
-
-**Ubuntu/Debian:**
-```bash
-sudo apt install libraylib-dev
-mkdir build && cd build
-cmake ..
-make
-```
-
-**Windows (with vcpkg):**
 ```cmd
-vcpkg install raylib:x64-windows
-mkdir build
-cd build
-cmake .. -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+vcpkg install raylib:x64-windows-static
+
+mkdir build && cd build
+cmake .. ^
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static ^
+  -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake ^
+  -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
+  -G "Visual Studio 16 2019" -A x64
 cmake --build . --config Release
 ```
 
-**macOS (with Homebrew):**
+Output: `build/Release/RetroForge.exe` — no DLL dependencies.
+
+### Linux
+
 ```bash
-brew install raylib
+sudo apt install libraylib-dev   # Ubuntu/Debian
+# or: sudo pacman -S raylib      # Arch
+
 mkdir build && cd build
 cmake ..
-make
+make -j$(nproc)
+./RetroForge
 ```
 
-## Running
-
-After building, run the executable:
+### macOS
 
 ```bash
-# Linux/macOS
-./RetroForge
+brew install raylib
 
-# Windows
-.\RetroForge.exe
+mkdir build && cd build
+cmake ..
+make -j$(sysctl -n hw.logicalcpu)
+./RetroForge
 ```
+
+---
 
 ## Keyboard Controls
 
-The dashboard features an interactive control panel accessible via keyboard:
+| Key | Action |
+|-----|--------|
+| `TAB` | Open / close menu |
+| `↑ / ↓` | Navigate menu |
+| `ENTER` | Select menu item |
+| `ESC` | Back / close overlay |
+| `F5` | Start / stop CPU stress test (live mode only) |
+| `Ctrl+T` | New terminal tab |
+| `Ctrl+W` | Close terminal tab |
+| `Ctrl+Tab` | Switch terminal tab |
 
-- **TAB**: Toggle control panel menu on/off
-- **UP/DOWN Arrow Keys**: Navigate through menu options
-- **ENTER**: Select/activate the highlighted menu option
-- **ESC**: Exit application
-
-### Menu Options
-
-1. **Dashboard View** - Simulated system data with smooth animations
-2. **Real-Time Monitoring** - Live CPU, RAM, and Disk usage from Windows APIs
-3. **Network Diagnostics** - Coming soon
-4. **System Information** - Coming soon
-
-The title bar shows `[SIM]` for simulated mode or `[LIVE]` for real-time monitoring.
-
-## Optional: Retro Font
-
-For an authentic retro look, place a VGA/DOS-style font at:
-```
-resources/fonts/VGA.ttf
-```
-
-The app will fall back to the default font if this file is not found.
+---
 
 ## Project Structure
 
 ```
-├── CMakeLists.txt          # CMake build configuration
-├── main.cpp                # Main application and UI code
-├── system_monitor.h        # System monitoring interface
-├── system_monitor.cpp      # Windows API system monitoring implementation
-├── resources/
-│   ├── shaders/
-│   │   └── crt.fsh        # CRT post-processing fragment shader
-│   └── fonts/
-│       └── VGA.ttf        # Optional retro font
-└── README.md
+RetroForge/
+├── main.cpp                  # Entry point, input handling, game loop
+├── dashboard.cpp / .h        # Widget rendering, stats update, anomaly detection
+├── ui_menus.cpp / .h         # Onboarding, color theme, widget menus
+├── system_monitor.cpp        # Windows system metrics (CPU, RAM, Disk, Net)
+├── system_monitor_posix.cpp  # Linux/macOS system metrics
+├── system_monitor.h          # Shared interface
+├── speedtest.cpp / .h        # Internet speed test (Cloudflare)
+├── stress_test.cpp / .h      # CPU stress test (all cores)
+├── terminal.cpp / .h         # Multi-tab embedded terminal
+├── theme.cpp / .h            # Color theme definitions
+├── config.cpp / .h           # Settings persistence (dashboard.cfg)
+├── CMakeLists.txt
+└── resources/
+    ├── shaders/crt.fsh       # CRT post-processing fragment shader
+    └── fonts/VGA.ttf         # Optional VGA retro font
 ```
 
-## Next Steps
-
-To enhance this dashboard with real functionality:
-
-1. **Real System Monitoring**
-   - Windows: Use `GetSystemTimes()` and `GlobalMemoryStatusEx()`
-   - Linux: Read from `/proc/stat`, `/proc/meminfo`
-   - macOS: Use `sysctl()` calls
-
-2. **Network Speed Testing**
-   - Implement HTTP download speed test
-   - Add ping latency measurement
-
-3. **External Data Sources**
-   - Cryptocurrency price ticker via API
-   - Weather information
-   - Stock market data
-
-4. **Interactive Features**
-   - Keyboard controls for different views
-   - Clickable elements for detailed info
-   - Configuration menu
-
-5. **Enhanced Visual Effects**
-   - More sophisticated shader effects
-   - Animated transitions
-   - Particle effects for alerts
+---
 
 ## License
 
-This project is provided as-is for educational and entertainment purposes.
+MIT — do whatever you want with it.
