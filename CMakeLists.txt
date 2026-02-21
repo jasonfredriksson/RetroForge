@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(RetroCRTDashboard VERSION 1.0.0 LANGUAGES CXX)
+project(RetroForge VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,13 +18,24 @@ set(SOURCES
     system_monitor.cpp
     system_monitor_posix.cpp
     speedtest.cpp
+    stress_test.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Platform-specific link libraries
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
+    find_library(GLFW3_LIB glfw3 PATHS "C:/vcpkg/installed/x64-windows-static/lib" NO_DEFAULT_PATH)
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        raylib
+        ${GLFW3_LIB}
+        opengl32
+        winmm
+        gdi32
+        user32
+        shell32
+    )
 elseif(APPLE)
     find_library(COCOA_LIB Cocoa REQUIRED)
     find_library(IOKIT_LIB IOKit REQUIRED)

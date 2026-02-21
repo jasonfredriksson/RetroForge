@@ -2,6 +2,7 @@
 #include "theme.h"
 #include "system_monitor.h"
 #include "speedtest.h"
+#include "stress_test.h"
 #include "raylib.h"
 #include <string>
 #include <vector>
@@ -25,6 +26,7 @@ DashboardWidgets widgets;
 bool             showWidgetMenu  = false;
 int              selectedWidget  = 0;
 bool             isFirstRun      = true;
+AnomalyState     anomaly;
 
 // ── Widget state helper ───────────────────────────────────────────────────────
 void GetWidgetStates(bool* states[WIDGET_COUNT]) {
@@ -100,6 +102,56 @@ void UpdateStats(float deltaTime) {
     stats.disk    += (stats.targetDisk    - stats.disk)    * deltaTime * S;
     stats.netDown += (stats.targetNetDown - stats.netDown) * deltaTime * S;
     stats.netUp   += (stats.targetNetUp   - stats.netUp)   * deltaTime * S;
+
+    // ── Anomaly detection ───────────────────────────────────────────────────
+    if (stats.useRealData) {
+        // Update rolling network baseline (EMA, ~30s time constant)
+        float netTotal = stats.netDown + stats.netUp;
+        if (anomaly.netBaseline < 0.f)
+            anomaly.netBaseline = netTotal;  // seed on first real sample
+        else
+            anomaly.netBaseline += (netTotal - anomaly.netBaseline) * deltaTime * (1.f / 30.f);
+
+        bool wasTriggered = anomaly.triggered;
+        anomaly.triggered = false;
+        anomaly.reason    = "NONE DETECTED";
+
+        // CPU sustained above 90%
+        static float cpuHighTimer = 0.f;
+        if (stats.cpu > 90.f) cpuHighTimer += deltaTime;
+        else                  cpuHighTimer  = 0.f;
+        if (cpuHighTimer >= 3.f) {
+            anomaly.triggered = true;
+            char buf[64]; snprintf(buf, sizeof(buf), "CPU HIGH  %.0f%%", stats.cpu);
+            anomaly.reason = buf;
+        }
+
+        // RAM above 95%
+        if (!anomaly.triggered && stats.ram > 95.f) {
+            anomaly.triggered = true;
+            char buf[64]; snprintf(buf, sizeof(buf), "RAM CRITICAL  %.0f%%", stats.ram);
+            anomaly.reason = buf;
+        }
+
+        // Network spike: 10x the rolling baseline
+        if (!anomaly.triggered && anomaly.netBaseline > 1.f && netTotal > anomaly.netBaseline * 10.f) {
+            anomaly.triggered = true;
+            char buf[64]; snprintf(buf, sizeof(buf), "NET SPIKE  %.0f KB/s", netTotal);
+            anomaly.reason = buf;
+        }
+
+        // Log when state changes
+        if (anomaly.triggered && !wasTriggered)
+            AddLogEntry("[ANOMALY] " + anomaly.reason, RED);
+        else if (!anomaly.triggered && wasTriggered)
+            AddLogEntry("[ANOMALY] Condition cleared", GREEN_PHOSPHOR);
+    } else {
+        // In sim mode reset everything
+        anomaly.triggered   = false;
+        anomaly.reason      = "NONE DETECTED";
+        anomaly.netBaseline = -1.f;
+        static float cpuHighTimer = 0.f; cpuHighTimer = 0.f;
+    }
 }
 
 void GenerateRandomLog() {
@@ -320,11 +372,19 @@ void DrawDashboard() {
         rowY += rowH;
     }
     if (widgets.showAnomaly) {
-        static float flash = 0.f;
-        flash += GetFrameTime() * 3.f;
-        Color ac = YELLOW_ALERT;
-        ac.a = static_cast<unsigned char>(160 + 95 * sinf(flash));
-        DrawText("ANOMALY  NONE DETECTED", LX + 14, rowY, 18, ac);
+        anomaly.flashTimer += GetFrameTime() * (anomaly.triggered ? 6.f : 2.f);
+        if (anomaly.triggered) {
+            // Red flash when something is wrong
+            Color ac = RED;
+            ac.a = static_cast<unsigned char>(120 + 135 * fabsf(sinf(anomaly.flashTimer)));
+            std::string label = "ANOMALY  " + anomaly.reason;
+            DrawText(label.c_str(), LX + 14, rowY, 18, ac);
+        } else {
+            // Gentle green pulse when all clear
+            Color ac = GREEN_PHOSPHOR;
+            ac.a = static_cast<unsigned char>(160 + 95 * sinf(anomaly.flashTimer));
+            DrawText("ANOMALY  NONE DETECTED", LX + 14, rowY, 18, ac);
+        }
         rowY += rowH;
     }
 
@@ -346,8 +406,23 @@ void DrawDashboard() {
     // Bottom bar
     DrawLine(0, WINDOW_HEIGHT - BOT, WINDOW_WIDTH, WINDOW_HEIGHT - BOT, DIM_GREEN);
     DrawText("TAB: Menu", PAD, WINDOW_HEIGHT - BOT + 8, 14, DIM_GREEN);
-    const char* mode = stats.useRealData ? "MODE: LIVE" : "MODE: SIM";
-    DrawText(mode, WINDOW_WIDTH / 2 - 40, WINDOW_HEIGHT - BOT + 8, 14, DIM_GREEN);
+
+    // Stress test indicator / hint
+    if (stressState == StressTestState::RUNNING) {
+        static float stressFlash = 0.f;
+        stressFlash += GetFrameTime() * 5.f;
+        Color sc = AMBER_PHOSPHOR;
+        sc.a = (unsigned char)(160 + 95 * fabsf(sinf(stressFlash)));
+        char stressBuf[48];
+        snprintf(stressBuf, sizeof(stressBuf), "STRESS  %.0f%%  [F5] STOP", stressProgress * 100.f);
+        int sw = MeasureText(stressBuf, 14);
+        DrawText(stressBuf, WINDOW_WIDTH / 2 - sw / 2, WINDOW_HEIGHT - BOT + 8, 14, sc);
+    } else {
+        const char* mode = stats.useRealData ? "MODE: LIVE  [F5] STRESS TEST" : "MODE: SIM";
+        int mw = MeasureText(mode, 14);
+        DrawText(mode, WINDOW_WIDTH / 2 - mw / 2, WINDOW_HEIGHT - BOT + 8, 14, DIM_GREEN);
+    }
+
     int tnw = MeasureText(THEME_NAMES[currentTheme], 14);
     DrawText(THEME_NAMES[currentTheme], WINDOW_WIDTH - tnw - PAD, WINDOW_HEIGHT - BOT + 8, 14, DIM_GREEN);
 

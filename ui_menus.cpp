@@ -28,7 +28,7 @@ void DrawOnboarding() {
     DrawRectangleLines(BX, BY, BW, BH, NT);
 
     if (onboardingStep == 0) {
-        DrawText("WELCOME TO RETRO CRT DASHBOARD", BX + 80,  BY + 50,  28, NT);
+        DrawText("WELCOME TO RETROFORGE", BX + 80,  BY + 50,  28, NT);
         DrawText("A customizable system monitoring terminal",  BX + 150, BY + 95,  16, NS);
         DrawLine(BX + 20, BY + 125, BX + BW - 20, BY + 125, {60, 60, 60, 255});
         DrawText("- Real-time system monitoring (CPU, RAM, Disk)", BX + 60, BY + 145, 16, NS);

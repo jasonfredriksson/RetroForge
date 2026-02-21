@@ -6,6 +6,7 @@
 #include "config.h"
 #include "system_monitor.h"
 #include "speedtest.h"
+#include "stress_test.h"
 #include <string>
 #include <cstdio>
 
@@ -236,6 +237,21 @@ int main() {
 
         // ── Input: Main menu + view-specific keys ────────────────────────
         else {
+            // F5: toggle CPU stress test
+            if (IsKeyPressed(KEY_F5)) {
+                if (stressState == StressTestState::RUNNING) {
+                    StopStressTest();
+                    AddLogEntry("[STRESS] Test stopped", AMBER_PHOSPHOR);
+                } else {
+                    if (!stats.useRealData) {
+                        AddLogEntry("[STRESS] Enable real monitoring first (menu)", YELLOW_ALERT);
+                    } else {
+                        StartStressTest(30);
+                        AddLogEntry("[STRESS] CPU stress test started (30s)", AMBER_PHOSPHOR);
+                    }
+                }
+            }
+
             // TAB always toggles the menu overlay
             if (IsKeyPressed(KEY_TAB)) {
                 showMenu = !showMenu;

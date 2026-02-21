@@ -29,6 +29,7 @@ static void InitTab(int idx) {
     tabs[idx].name   = "Tab " + std::to_string(idx + 1);
     tabs[idx].output.push_back("CRT Dashboard Terminal  -  type commands and press ENTER");
     tabs[idx].output.push_back("Ctrl+T: new tab   Ctrl+W: close tab   Ctrl+Tab: switch");
+    tabs[idx].output.push_back("NOTE: Use simple one-shot commands only (dir, ping, ipconfig...). Interactive programs (python, ssh, etc.) will crash.");
 }
 
 void RunTerminalCommand(const std::string& cmd) {

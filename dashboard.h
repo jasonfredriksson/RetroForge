@@ -7,7 +7,7 @@
 // ── Window constants ──────────────────────────────────────────────────────────
 static const int WINDOW_WIDTH  = 1280;
 static const int WINDOW_HEIGHT = 720;
-static const char* WINDOW_TITLE = "Retro CRT Dashboard";
+static const char* WINDOW_TITLE = "RetroForge";
 
 // ── Menu options ──────────────────────────────────────────────────────────────
 enum MenuOption {
@@ -77,6 +77,15 @@ struct SystemStats {
     char  computerName[64] = {};
 };
 
+// ── Anomaly state ───────────────────────────────────────────────────────────
+struct AnomalyState {
+    bool        triggered  = false;
+    std::string reason     = "NONE DETECTED";
+    float       flashTimer = 0.f;
+    // Rolling net baseline (exponential moving average)
+    float       netBaseline = -1.f;
+};
+
 // ── Log entry ─────────────────────────────────────────────────────────────────
 struct LogEntry {
     std::string message;
@@ -98,6 +107,7 @@ extern DashboardWidgets widgets;
 extern bool             showWidgetMenu;
 extern int              selectedWidget;
 extern bool             isFirstRun;
+extern AnomalyState     anomaly;
 
 // ── Functions ─────────────────────────────────────────────────────────────────
 void GetWidgetStates(bool* states[WIDGET_COUNT]);

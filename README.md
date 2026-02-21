@@ -1,4 +1,4 @@
-# Retro CRT Dashboard
+# RetroForge
 
 A nostalgic 1980s/90s green-phosphor CRT monitor style system information dashboard built with raylib and C++.
 
@@ -69,10 +69,10 @@ After building, run the executable:
 
 ```bash
 # Linux/macOS
-./RetroCRTDashboard
+./RetroForge
 
 # Windows
-.\RetroCRTDashboard.exe
+.\RetroForge.exe
 ```
 
 ## Keyboard Controls
