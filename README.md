@@ -2,7 +2,18 @@
 
 A retro CRT-style system monitoring dashboard built with C++ and raylib. Authentic green-phosphor aesthetics, real-time system metrics, an embedded terminal, network diagnostics, anomaly detection, and a CPU stress tester — all wrapped in a self-contained single executable.
 
-![RetroForge Screenshot](screenshot.png)
+## Screenshots
+
+| | |
+|---|---|
+| ![Dashboard](screenshots/Print1.png) | ![Control Panel](screenshots/print2.png) |
+| *Live dashboard — real-time CPU, RAM, disk, network and system log* | *Control panel menu overlay* |
+| ![Network Diagnostics](screenshots/print3.png) | ![Speed Test](screenshots/print4.png) |
+| *Network diagnostics — all adapters with live traffic* | *Speed test complete — download, upload and ping results* |
+| ![System Info](screenshots/print5.png) | ![Widget Customization](screenshots/print6.png) |
+| *System information — CPU, RAM, GPU, storage and OS details* | *Widget customization — toggle any panel on or off* |
+| ![Color Themes](screenshots/print7.png) | ![Terminal](screenshots/print8.png) |
+| *Color theme selector — Green Phosphor, Amber, Cyan, White, Red Alert* | *Embedded multi-tab terminal* |
 
 ---
 
